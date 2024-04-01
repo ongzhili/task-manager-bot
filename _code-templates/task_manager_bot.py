@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-
+import random
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -11,6 +11,24 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
+
+@bot.command(name='roll', help='Rolls a dice')
+async def rolling(ctx, args):
+    if (args.isnumeric()):
+        value = int(args)
+
+        await ctx.send("Rolled: " + str(random.randint(0, value)))
+    else:
+        await ctx.send("You can't roll with a non-numeric value")
+
+@bot.command(name='harass', help='Why')
+async def harass(ctx):
+    await ctx.send(f'<@{ctx.author.id}>')
+
+@bot.command(name='whoami', help='User object information')
+async def dox(ctx):
+    toSend = f'{ctx.author.mention}\nGlobal_Name: {ctx.author.global_name}\nName: {ctx.author.name}\n ID: {ctx.author.id}'
+    await ctx.send(toSend)
 
 
 @bot.command(name='ping', help='Pings the bot')
