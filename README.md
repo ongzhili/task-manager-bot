@@ -14,12 +14,13 @@ pip install discord
 ## PLANNED FEATURES (Feel free to add)
 
 ### Main functions
-- CRUD for tasks
-- Send a reminder during set time?
-
-
-
+- [ ] CRUD for tasks
+- [ ] Send a reminder during set time?
+- [ ] Tools - coinflip, roll dice (XdY, X<=10, Y=4,6,8,10,12,20)
+- [ ] Backend db
 
 ### Far goals
-- play with osu api (i need to check this apparently there is a rate limit)
-  
+- [ ] play with osu api (i need to check this apparently there is a rate limit)
+- [ ] CTF api
+- [ ] linkedin/job api maybe?
+- [ ] news api (game news, tech news etc.)
