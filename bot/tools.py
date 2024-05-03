@@ -21,9 +21,13 @@ def roll_dice(x, y):
     
     diceList = []
     
-    for idx in range(x):
-        diceRoll = random.randint(0, y)
+    for count in range(x):
+        diceList.append(random.randint(1, y))
     
+    # For debugging
+    print(f'Dices rolled: {diceList}')
+
+    return (1, diceList)
     
 '''
 ## Coinflip
@@ -37,4 +41,19 @@ def flip_coin(x):
     if x > 10 or x < 1:
         return (0, f'Invalid number of coins! Input a number between 1-10.')
     
+    coinList = []
     
+    for count in range(x):
+        coinList.append(random.choice(["Heads", "Tails"]))
+    
+    return (1, coinList)
+
+'''
+## 8-Ball
+
+Roll 8-ball once
+'''
+def eightball():
+    eightball_options = []
+    
+    return (1, random.choice(eightball_options))

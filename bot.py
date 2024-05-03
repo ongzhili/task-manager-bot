@@ -1,24 +1,35 @@
 import discord
 from discord.ext import commands
-import random
+from bot.tools import *
 
 intents = discord.Intents.default()
 intents.message_content = True
 # Initialize the bot
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# Token
+token = ''
+
 # Event handler for when the bot is ready
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
 
-@bot.command(name='roll', help='Rolls a dice')
-async def rolling(ctx, args):
-    if (args.isnumeric()):
-        value = int(args)
-        await ctx.send("Rolled: " + str(random.randint(0, value)))
-    else:
-        await ctx.send("You can't roll with a non-numeric value")
+# @bot.command(name='roll', help='Rolls a dice')
+# async def rolling(ctx, args):
+#     if (args.isnumeric()):
+#         value = int(args)
+#         await ctx.send("Rolled: " + str(random.randint(0, value)))
+#     else:
+#         await ctx.send("You can't roll with a non-numeric value")
+
+@bot.command(name='roll', help='Rolls specified dice X times. !roll XdY')
+async def roll(ctx, args):
+    ## Sanitize args
+    verifyString = "^[1-10]d[1-20]$"
+    
+    result = roll_dice()
+    embed=discord.Embed
 
 @bot.command(name='harass', help='Why')
 async def harass(ctx):
@@ -52,5 +63,13 @@ async def complete_task(ctx, task_id: int):
     # Here you would mark the task as completed in your database or in-memory data structure
     await ctx.send(f'Task {task_id} marked as completed')
 
+'''
+Init: open token file and set token
+'''
+def __init__(self, *args, **kwargs):
+    with open("token.txt", "r") as f:
+        token = f.read()
+        print(f"Read token: {token}")
+
 # Run the bot
-bot.run('MTIyNDMzNzg4MjQ2MzA4MDU1OQ.GZoVw-.NzjyeYXkyg6YcoggYNj8z2ID67xLZ21UnbK_OU')
+bot.run(token)
