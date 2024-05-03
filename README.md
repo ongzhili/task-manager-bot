@@ -16,7 +16,7 @@ pip install discord
 ### Main functions
 - [ ] CRUD for tasks
 - [ ] Send a reminder during set time?
-- [ ] Tools - coinflip, roll dice (XdY, X<=10, Y=4,6,8,10,12,20)
+- [X] Tools - coinflip, roll dice (XdY, X<=10, Y=4,6,8,10,12,20)
 - [ ] Backend db
 
 ### Far goals
