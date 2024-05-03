@@ -16,7 +16,6 @@ async def on_ready():
 async def rolling(ctx, args):
     if (args.isnumeric()):
         value = int(args)
-
         await ctx.send("Rolled: " + str(random.randint(0, value)))
     else:
         await ctx.send("You can't roll with a non-numeric value")
