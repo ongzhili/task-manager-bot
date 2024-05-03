@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from bot.tools import *
+from .bot.tools import *
 
 import re
 
