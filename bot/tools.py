@@ -7,17 +7,31 @@ DnD-style, X being number of dices to roll, Y being face of dice
 Available dices: 4, 6, 8, 10, 12, 20
 Limit number of dices to 10
 '''
-def roll_dice(x, y):
+def roll_dice(args):
     # Available dices: d4, d6, d8, d10, d12, d20
     dices = [4, 6, 8, 10, 12, 20]
     
+    arglist = args.split('d')
+    
     # Error handling, early escape strategy
+    ## If wrong arglist length
+    if len(arglist) != 2:
+        return (0, f'Invalid argument!\nPlease use the format !roll XdY, where X is a number between 1-10 and dY is a valid dice: {dices}.')
+    ## If x or y is not an integer
+    for arg in arglist:
+        if not arg.isdigit():
+            return (0, f'Invalid argument!\nPlease use the format !roll XdY, where X is a number between 1-10 and dY is a valid dice: {dices}.')
+        
+    # Parse ints
+    x = int(arglist[0])
+    y = int(arglist[1])
+    
     ## If invalid dice (invalid y)
     if y not in dices:
-        return (0, f'Invalid dice! Available: {dices}')
+        return (0, f'Invalid dice!\nAvailable: {dices}')
     ## If invalid number of dices (invalid x)
     if x > 10 or x < 1:
-        return (0, f'Invalid number of dices! Input a number between 1-10.')
+        return (0, f'Invalid number of dices!\nInput a number between 1-10.')
     
     diceList = []
     
@@ -35,11 +49,18 @@ def roll_dice(x, y):
 Flip X number of coins, either heads or tails
 Limit number of coins to 10
 '''
-def flip_coin(x):
+def flip_coin(arg):
     # Error handling, early escape
+    ## If arg is not an int
+    if not arg.isdigit():
+        return (0, 'Invalid argument!\nPlease use the format !flip X, where X is a number between 1-10')
+    
+    # Parse int
+    x = int(arg)
+    
     ## If invalid number of coins
     if x > 10 or x < 1:
-        return (0, f'Invalid number of coins! Input a number between 1-10.')
+        return (0, f'Invalid number of coins!\nInput a number between 1-10.')
     
     coinList = []
     
