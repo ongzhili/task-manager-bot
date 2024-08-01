@@ -1,8 +1,11 @@
 import discord
 from discord.ext import commands
+import discord.ext.commands
 from bot.tools import *
 
 import re
+
+import discord.ext
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -24,6 +27,33 @@ async def on_ready():
 #         await ctx.send("Rolled: " + str(random.randint(0, value)))
 #     else:
 #         await ctx.send("You can't roll with a non-numeric value")
+@bot.command(name='8ball', help='Consults the magic 8-ball :8_ball: !8ball <Question>')
+async def eball(ctx, args):
+    # Gets 8ball response
+        result = eightball(args)
+
+        # Send result as embed
+        if not result[0]:
+            embed = discord.Embed(title="Invalid input for !8ball",
+                                description=f"{result[1]}",
+                                color=discord.Color.red())
+            embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+            await ctx.send(embed=embed)
+        else:
+            embed = discord.Embed(title=f"8Ball",
+                                description=f"The 8ball has spoken:\n{result[1]}",
+                                color=discord.Color.green())
+            embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+            await ctx.send(embed=embed)
+@eball.error
+async def eball_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        embed = discord.Embed(title="Invalid input for !8ball",
+                            description="You did not ask 8ball anything!",
+                            color=discord.Color.red())
+        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
+
 
 @bot.command(name='roll', help='Rolls specified Y dice X times. !roll XdY')
 async def roll(ctx, args):
@@ -41,6 +71,15 @@ async def roll(ctx, args):
         embed = discord.Embed(title=f"Rolled dice(s)!",
                               description=f"Here are your dice rolls:\n{result[1]}",
                               color=discord.Color.green())
+        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
+
+@roll.error
+async def roll_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        embed = discord.Embed(title="Invalid input for !roll",
+                            description='Invalid argument!\nPlease use the format !flip X, where X is a number between 1-10',
+                            color=discord.Color.red())
         embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
         await ctx.send(embed=embed)
 
@@ -65,11 +104,20 @@ async def flip(ctx, args):
 
 @bot.command(name='harass', help='Why')
 async def harass(ctx):
-    await ctx.send(f'<@{ctx.author.id}>')
+    # Send the initial message and store the returned message object
+    initial_message = await ctx.send(content=f'<@{ctx.author.id}>')
+
+    # Create the embed
+    embed = discord.Embed(title="Harass",
+                          description=f'<@{ctx.author.id}>',
+                          color=discord.Color.blue())
+
+    # Edit the initial message with the embed
+    await initial_message.edit(content=None, embed=embed)
 
 @bot.command(name='whoami', help='User object information')
 async def dox(ctx):
-    toSend = f'{ctx.author.mention}\nGlobal_Name: {ctx.author.global_name}\nName: {ctx.author.name}\n ID: {ctx.author.id}'
+    toSend = f'{ctx.author.mention}\nGlobal_Name: {ctx.author.global_name}\nName: {ctx.author.name}\nID: {ctx.author.id}'
     await ctx.send(toSend)
 
 
