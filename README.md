@@ -4,11 +4,13 @@
 
 ## Installation
 
-This bot uses the discord.py library.
+This bot uses the discord.py library, and ossapi (wrapper for osu!API)
 
 To install dependencies:
 ```
 pip install discord
+pip install ossapi
+pip install firebase_admin
 ```
 
 ## PLANNED FEATURES (Feel free to add)

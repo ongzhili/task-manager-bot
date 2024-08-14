@@ -1,7 +1,11 @@
+import datetime
 import discord
 from discord.ext import commands
 import discord.ext.commands
 from bot.tools import *
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
 
 import re
 
@@ -9,8 +13,22 @@ import discord.ext
 
 intents = discord.Intents.default()
 intents.message_content = True
-# Initialize the bot
+
+# Initialization Process: Discord bot + Firebase App
+
+# Firebase API
+cred = credentials.Certificate('firebase_key.json')
+default_app = firebase_admin.initialize_app(cred, {
+    'databaseURL': "https://lelcoindb-default-rtdb.asia-southeast1.firebasedatabase.app/"
+})
+
+ref = db.reference("Test1")
+data = ref.get()
+print(data)
+
+# Discord Bot
 bot = commands.Bot(command_prefix='!', intents=intents)
+
 
 # Token
 token = ''
@@ -20,6 +38,51 @@ token = ''
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
 
+
+@bot.command(name='addtask', help = 'Adds a task to the task manager list. :calendar: Usage: !addtask <TASK> in <TIME>')
+async def addtask(ctx, *, args):
+    # Split at the last occurrence of " in "
+    parts = args.rsplit(" in ", 1)
+    
+    if len(parts) != 2:
+        await ctx.send("Invalid format. Please use: !addtask <TASK> in <TIME>")
+        
+    else:
+        task, time = parts
+        task = task.strip()
+        time = time.strip()
+
+        try:
+            time_delta = parse_time_delta(time)
+            due_time = datetime.datetime.now() + time_delta
+            
+            # Format the due time
+            formatted_due_time = due_time.strftime("%Y-%m-%d %I:%M %p")
+            
+            await ctx.send(f"Task added: '{task}' to be completed by {formatted_due_time}")
+
+        except ValueError as e:
+            
+            await ctx.send(f"Error parsing time: {e}")
+
+def parse_time_delta(time_string):
+    # Parse time delta from strings like "2 days", "1 week", "3 hours", etc.
+    match = re.match(r'(\d+)\s*(day|days|week|weeks|hour|hours|minute|minutes)', time_string, re.IGNORECASE)
+    if match:
+        amount, unit = match.groups()
+        amount = int(amount)
+        unit = unit.lower()
+        
+        if unit in ['day', 'days']:
+            return datetime.timedelta(days=amount)
+        elif unit in ['week', 'weeks']:
+            return datetime.timedelta(weeks=amount)
+        elif unit in ['hour', 'hours']:
+            return datetime.timedelta(hours=amount)
+        elif unit in ['minute', 'minutes']:
+            return datetime.timedelta(minutes=amount)
+    
+    raise ValueError(f"Unable to parse time string: {time_string}")
 # @bot.command(name='roll', help='Rolls a dice')
 # async def rolling(ctx, args):
 #     if (args.isnumeric()):
@@ -87,7 +150,6 @@ async def roll_error(ctx, error):
 async def flip(ctx, args):
     # Parse args, get result tuple
     result = flip_coin(args)
-    
     # Send result as embed
     if not result[0]:
         embed = discord.Embed(title="Invalid input for !flip",
@@ -125,11 +187,6 @@ async def dox(ctx):
 async def testing_text(ctx):
     await ctx.send("Pong")
 
-# Command to add a task
-@bot.command(name='addtask', help='Adds a task to the list.')
-async def add_task(ctx, *, task):
-    # Here you would add the task to your database or in-memory data structure
-    await ctx.send(f'Task added: {task}')
 
 # Command to assign a task
 @bot.command(name='assign', help='Assigns a task to a user.')
