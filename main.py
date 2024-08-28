@@ -1,6 +1,6 @@
 import datetime
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import discord.ext.commands
 from bot.tools import *
 import firebase_admin
@@ -22,16 +22,17 @@ default_app = firebase_admin.initialize_app(cred, {
     'databaseURL': "https://lelcoindb-default-rtdb.asia-southeast1.firebasedatabase.app/"
 })
 
-ref = db.reference("Test1")
-data = ref.get()
-print(data)
-
 # Discord Bot
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 
 # Token
 token = ''
+
+@tasks.loop(seconds = 10) # repeat after every 10 seconds
+async def myLoop():
+    print("ababababab")
+
 
 # Event handler for when the bot is ready
 @bot.event
@@ -221,5 +222,6 @@ with open("token.txt", "r") as f:
     token = f.readline()
     print(f"Read token: {token}")
 
+myLoop.start()
 # Run the bot
 bot.run(token)
