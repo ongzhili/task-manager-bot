@@ -1,6 +1,7 @@
+from collections import defaultdict
 import datetime
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import discord.ext.commands
 from bot.tools import *
 import firebase_admin
@@ -22,10 +23,6 @@ default_app = firebase_admin.initialize_app(cred, {
     'databaseURL': "https://lelcoindb-default-rtdb.asia-southeast1.firebasedatabase.app/"
 })
 
-ref = db.reference("Test1")
-data = ref.get()
-print(data)
-
 # Discord Bot
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -33,11 +30,56 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Token
 token = ''
 
+@tasks.loop(minutes = 1) # repeat after every 10 seconds
+async def checkForDueTasks():
+    print("Checking for Tasks:")
+    matching_entries = checker()
+    if matching_entries:
+        print("Matching entries found:")
+        for key, value in matching_entries.items():
+            print(f"Key: {key}, Value: {value}")
+    else:
+        print("No matching entries found.")
+        # Queries the db to find deadlines that match the current time
+        # Sends a dm to each of them
+
+def checker():
+   # Get the current time
+    now = datetime.datetime.now()
+    
+    # Round to the nearest minute
+    now = now.replace(second=0, microsecond=0)
+    
+    # Format the time string to match your database format
+    current_time_str = now.strftime("%Y-%m-%d %I:%M %p")
+    
+    # Get a reference to the 'users' node
+    users_ref = db.reference('users')
+    
+    # Dictionary to store matching tasks
+    matching_tasks = defaultdict(list)
+    
+    # Iterate through all users
+    all_users = users_ref.get()
+    
+
+    for user_id, user_data in all_users.items():
+        if 'tasks' in user_data:
+            for task_id, task_info in user_data['tasks'].items():
+                if task_info['time'] == current_time_str:
+                    matching_tasks[user_id].append({
+                        'task_id': task_id,
+                        'task': task_info['task'],
+                        'time': task_info['time']
+                    })
+
+    return matching_tasks
+
 # Event handler for when the bot is ready
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
-
+    checkForDueTasks.start()
 
 @bot.command(name='addtask', help = 'Adds a task to the task manager list. :calendar: Usage: !addtask <TASK> in <TIME>')
 async def addtask(ctx, *, args):
@@ -67,6 +109,7 @@ async def addtask(ctx, *, args):
             ref = db.reference(f'users/{author_id}/tasks')
             if not ref.get():
                 # If it doesn't exist, set an empty structure
+
                 ref.set({})
             ref.push({
                 'task': task,
@@ -221,5 +264,4 @@ with open("token.txt", "r") as f:
     token = f.readline()
     print(f"Read token: {token}")
 
-# Run the bot
 bot.run(token)
