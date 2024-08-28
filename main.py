@@ -55,11 +55,25 @@ async def addtask(ctx, *, args):
         try:
             time_delta = parse_time_delta(time)
             due_time = datetime.datetime.now() + time_delta
+
+            unix_timestamp = int(due_time.timestamp())
             
             # Format the due time
             formatted_due_time = due_time.strftime("%Y-%m-%d %I:%M %p")
             
-            await ctx.send(f"Task added: '{task}' to be completed by {formatted_due_time}")
+            # Convert ctx.author.id to a string and remove any invalid characters
+            author_id = str(ctx.author.id).replace('.', '_').replace('$', '_').replace('#', '_').replace('[', '_').replace(']', '_')
+
+            ref = db.reference(f'users/{author_id}/tasks')
+            if not ref.get():
+                # If it doesn't exist, set an empty structure
+                ref.set({})
+            ref.push({
+                'task': task,
+                'time': formatted_due_time
+            })
+            
+            await ctx.send(f"Task added: '{task}' to be completed by <t:{unix_timestamp}> (This should be in your local timezone)")
 
         except ValueError as e:
             
