@@ -30,7 +30,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Token
 token = ''
 
-@tasks.loop(seconds=20) # repeat after every 10 seconds
+@tasks.loop(minutes = 1) # repeat after every 10 seconds
 async def checkForDueTasks():
     print("Checking for Tasks:")
     matching_entries = checker()
