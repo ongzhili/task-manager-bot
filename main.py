@@ -7,6 +7,9 @@ from bot.tools import *
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
+import sched
+import time
+import asyncio
 
 import re
 
@@ -25,60 +28,81 @@ default_app = firebase_admin.initialize_app(cred, {
 
 # Discord Bot
 bot = commands.Bot(command_prefix='!', intents=intents)
-
+scr = sched.scheduler(time.time, time.sleep)
 
 # Token
 token = ''
 
-@tasks.loop(minutes = 1) # repeat after every 10 seconds
+@tasks.loop(minutes = 30) # repeat after every 30 minutes
 async def checkForDueTasks():
-    print("Checking for Tasks:")
+    print("Checking for Tasks that are due in the next 30 minutes:")
     matching_entries = checker()
+
+    def build_sched(matching_entries, scr):
+        for entry in matching_entries:
+            print(entry)
+            scr.enterabs(entry['time'].timestamp(), 1, asyncio.create_task, argument=(send_dm(entry),))
     if matching_entries:
         print("Matching entries found:")
-        for key, value in matching_entries.items():
-            print(f"Key: {key}, Value: {value}")
+        build_sched(matching_entries, scr)
     else:
         print("No matching entries found.")
-        # Queries the db to find deadlines that match the current time
-        # Sends a dm to each of them
+
 
 def checker():
    # Get the current time
     now = datetime.datetime.now()
-    
-    # Round to the nearest minute
     now = now.replace(second=0, microsecond=0)
-    
-    # Format the time string to match your database format
-    current_time_str = now.strftime("%Y-%m-%d %I:%M %p")
-    
+    time_window = datetime.timedelta(minutes=30)
+
     # Get a reference to the 'users' node
     users_ref = db.reference('users')
-    
+
     # Dictionary to store matching tasks
-    matching_tasks = defaultdict(list)
-    
+    matching_tasks = []
+
     # Iterate through all users
     all_users = users_ref.get()
-    
-
     for user_id, user_data in all_users.items():
         if 'tasks' in user_data:
             for task_id, task_info in user_data['tasks'].items():
-                if task_info['time'] == current_time_str:
-                    matching_tasks[user_id].append({
+                task_time = datetime.datetime.strptime(task_info['time'], "%Y-%m-%d %I:%M %p")
+                # Check if the task time is within the next 30 minutes
+                if now <= task_time <= now + time_window:
+                    matching_tasks.append({
+                        'user_id': user_id,
                         'task_id': task_id,
                         'task': task_info['task'],
-                        'time': task_info['time']
+                        'time': task_time
                     })
 
     return matching_tasks
+
+@tasks.loop(seconds=1)
+async def start_task_loop():
+    await run_scheduler()
+
+async def run_scheduler():
+    while True:
+        scr.run(blocking=False)  # Run the scheduler without blocking
+        await asyncio.sleep(1)  # Sleep to prevent busy waiting
+
+# TODO: REFACTOR CODE + DELETE TASK FROM DB AFTER SENT
+async def send_dm(tsk):
+    try:
+        user = await bot.fetch_user(tsk['user_id'])
+        await user.send(tsk['task'])
+        print('Message sent to {user.name} successfully')
+    except discord.HTTPException:
+        print('Failed to send the message. The user may have DMs disabled.')
+    except discord.NotFound:
+        print('User not found. Please check the user ID.')
 
 # Event handler for when the bot is ready
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
+    start_task_loop.start()
     checkForDueTasks.start()
 
 @bot.command(name='addtask', help = 'Adds a task to the task manager list. :calendar: Usage: !addtask <TASK> in <TIME>')
@@ -263,5 +287,6 @@ Init: open token file and set token
 with open("token.txt", "r") as f:
     token = f.readline()
     print(f"Read token: {token}")
+
 
 bot.run(token)
