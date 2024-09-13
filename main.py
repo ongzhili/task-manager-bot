@@ -94,10 +94,8 @@ async def send_dm(tsk):
         user = await bot.fetch_user(tsk['user_id'])
         await user.send(f'Reminder: {tsk["task"]}')
         print('Message sent to {user.name} successfully')
-        if tsk['task_id']:
-            # If this was a long-time entry
-            ref = db.reference(f'users/{tsk["user_id"]}/tasks/{tsk["task_id"]}')
-            ref.delete()
+        ref = db.reference(f'users/{tsk["user_id"]}/tasks/{tsk["task_id"]}')
+        ref.delete()
     except discord.HTTPException:
         print('Failed to send the message. The user may have DMs disabled.')
     except discord.NotFound:
@@ -128,31 +126,30 @@ async def addtask(ctx, *, args):
             due_time = datetime.datetime.now() + time_delta
             unix_timestamp = int(due_time.timestamp())
 
+            # Format the due time
+            formatted_due_time = due_time.strftime("%Y-%m-%d %I:%M %p")
+            
+            # Convert ctx.author.id to a string and remove any invalid characters
+            author_id = str(ctx.author.id).replace('.', '_').replace('$', '_').replace('#', '_').replace('[', '_').replace(']', '_')
+
+            ref = db.reference(f'users/{author_id}/tasks')
+            if not ref.get():
+                # If it doesn't exist, set an empty structure
+                ref.set({})
+
+            entry = ref.push({
+                'task': task,
+                'time': formatted_due_time
+            })
             if time_delta < datetime.timedelta(minutes=10):
                 scr.enterabs(due_time.timestamp(), 1, asyncio.create_task, argument=(send_dm(
                         {
                             'user_id': ctx.author.id,
-                            'task_id': None,
+                            'task_id': entry.key,
                             'task': task,
                             'time': due_time
                         }
                 ),))
-            else:
-                # Format the due time
-                formatted_due_time = due_time.strftime("%Y-%m-%d %I:%M %p")
-                
-                # Convert ctx.author.id to a string and remove any invalid characters
-                author_id = str(ctx.author.id).replace('.', '_').replace('$', '_').replace('#', '_').replace('[', '_').replace(']', '_')
-
-                ref = db.reference(f'users/{author_id}/tasks')
-                if not ref.get():
-                    # If it doesn't exist, set an empty structure
-                    ref.set({})
-
-                ref.push({
-                    'task': task,
-                    'time': formatted_due_time
-                })
             
             await ctx.send(f"Task added: '{task}' to be completed by <t:{unix_timestamp}> (This should be in your local timezone)")
 
@@ -178,13 +175,7 @@ def parse_time_delta(time_string):
             return datetime.timedelta(minutes=amount)
     
     raise ValueError(f"Unable to parse time string: {time_string}")
-# @bot.command(name='roll', help='Rolls a dice')
-# async def rolling(ctx, args):
-#     if (args.isnumeric()):
-#         value = int(args)
-#         await ctx.send("Rolled: " + str(random.randint(0, value)))
-#     else:
-#         await ctx.send("You can't roll with a non-numeric value")
+
 @bot.command(name='8ball', help='Consults the magic 8-ball :8_ball: !8ball <Question>')
 async def eball(ctx, args):
     # Gets 8ball response
@@ -211,6 +202,31 @@ async def eball_error(ctx, error):
                             color=discord.Color.red())
         embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
         await ctx.send(embed=embed)
+
+@bot.command(name='view', help='Shows current reminders. !view')
+async def view(ctx):
+    ref = db.reference(f'users/{ctx.author.id}/tasks')                 
+    tasks = ref.get()
+    if tasks:
+        # embed.title = "Reminders"
+        # desc = ""
+        # for task in tasks:
+        #     desc += task.task
+        body = ""
+        for task_id, task in tasks.items():
+            body += f"'{task['task']}' by <t:{int(datetime.datetime.strptime(task['time'], '%Y-%m-%d %I:%M %p').timestamp())}>\n"
+        embed = discord.Embed(title="Reminders:",
+                            description=body,
+                            color=discord.Color.green())
+            
+    else:
+        embed = discord.Embed(title="No Reminders!",
+                            description="Looks clear!",
+                            color=discord.Color.red())
+        
+    await ctx.send(embed=embed)
+                       
+
 
 
 @bot.command(name='roll', help='Rolls specified Y dice X times. !roll XdY')
