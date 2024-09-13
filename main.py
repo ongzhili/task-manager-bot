@@ -10,6 +10,7 @@ from firebase_admin import db
 import sched
 import time
 import asyncio
+from ossapi import Ossapi
 
 import re
 
@@ -88,15 +89,15 @@ async def run_scheduler():
         scr.run(blocking=False)  # Run the scheduler without blocking
         await asyncio.sleep(1)  # Sleep to prevent busy waiting
 
-# TODO: REFACTOR CODE + DELETE TASK FROM DB AFTER SENT
 async def send_dm(tsk):
     try:
         user = await bot.fetch_user(tsk['user_id'])
-        await user.send(tsk['task'])
+        await user.send(f'Reminder: {tsk["task"]}')
         print('Message sent to {user.name} successfully')
-
-        ref = db.reference(f'users/{tsk["user_id"]}/tasks/{tsk["task_id"]}')
-        ref.delete()
+        if tsk['task_id']:
+            # If this was a long-time entry
+            ref = db.reference(f'users/{tsk["user_id"]}/tasks/{tsk["task_id"]}')
+            ref.delete()
     except discord.HTTPException:
         print('Failed to send the message. The user may have DMs disabled.')
     except discord.NotFound:
@@ -125,24 +126,33 @@ async def addtask(ctx, *, args):
         try:
             time_delta = parse_time_delta(time)
             due_time = datetime.datetime.now() + time_delta
-
             unix_timestamp = int(due_time.timestamp())
-            
-            # Format the due time
-            formatted_due_time = due_time.strftime("%Y-%m-%d %I:%M %p")
-            
-            # Convert ctx.author.id to a string and remove any invalid characters
-            author_id = str(ctx.author.id).replace('.', '_').replace('$', '_').replace('#', '_').replace('[', '_').replace(']', '_')
 
-            ref = db.reference(f'users/{author_id}/tasks')
-            if not ref.get():
-                # If it doesn't exist, set an empty structure
+            if time_delta < datetime.timedelta(minutes=10):
+                scr.enterabs(due_time.timestamp(), 1, asyncio.create_task, argument=(send_dm(
+                        {
+                            'user_id': ctx.author.id,
+                            'task_id': None,
+                            'task': task,
+                            'time': due_time
+                        }
+                ),))
+            else:
+                # Format the due time
+                formatted_due_time = due_time.strftime("%Y-%m-%d %I:%M %p")
+                
+                # Convert ctx.author.id to a string and remove any invalid characters
+                author_id = str(ctx.author.id).replace('.', '_').replace('$', '_').replace('#', '_').replace('[', '_').replace(']', '_')
 
-                ref.set({})
-            ref.push({
-                'task': task,
-                'time': formatted_due_time
-            })
+                ref = db.reference(f'users/{author_id}/tasks')
+                if not ref.get():
+                    # If it doesn't exist, set an empty structure
+                    ref.set({})
+
+                ref.push({
+                    'task': task,
+                    'time': formatted_due_time
+                })
             
             await ctx.send(f"Task added: '{task}' to be completed by <t:{unix_timestamp}> (This should be in your local timezone)")
 
