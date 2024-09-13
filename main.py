@@ -33,9 +33,9 @@ scr = sched.scheduler(time.time, time.sleep)
 # Token
 token = ''
 
-@tasks.loop(minutes = 30) # repeat after every 30 minutes
+@tasks.loop(minutes = 10) # repeat after every 30 minutes
 async def checkForDueTasks():
-    print("Checking for Tasks that are due in the next 30 minutes:")
+    print("Checking for Tasks that are due in the next 10 minutes:")
     matching_entries = checker()
 
     def build_sched(matching_entries, scr):
@@ -53,7 +53,7 @@ def checker():
    # Get the current time
     now = datetime.datetime.now()
     now = now.replace(second=0, microsecond=0)
-    time_window = datetime.timedelta(minutes=30)
+    time_window = datetime.timedelta(minutes=10)
 
     # Get a reference to the 'users' node
     users_ref = db.reference('users')
@@ -63,18 +63,19 @@ def checker():
 
     # Iterate through all users
     all_users = users_ref.get()
-    for user_id, user_data in all_users.items():
-        if 'tasks' in user_data:
-            for task_id, task_info in user_data['tasks'].items():
-                task_time = datetime.datetime.strptime(task_info['time'], "%Y-%m-%d %I:%M %p")
-                # Check if the task time is within the next 30 minutes
-                if now <= task_time <= now + time_window:
-                    matching_tasks.append({
-                        'user_id': user_id,
-                        'task_id': task_id,
-                        'task': task_info['task'],
-                        'time': task_time
-                    })
+    if all_users:
+        for user_id, user_data in all_users.items():
+            if 'tasks' in user_data:
+                for task_id, task_info in user_data['tasks'].items():
+                    task_time = datetime.datetime.strptime(task_info['time'], "%Y-%m-%d %I:%M %p")
+                    # Check if the task time is within the next 10 minutes
+                    if now <= task_time <= now + time_window:
+                        matching_tasks.append({
+                            'user_id': user_id,
+                            'task_id': task_id,
+                            'task': task_info['task'],
+                            'time': task_time
+                        })
 
     return matching_tasks
 
@@ -93,6 +94,9 @@ async def send_dm(tsk):
         user = await bot.fetch_user(tsk['user_id'])
         await user.send(tsk['task'])
         print('Message sent to {user.name} successfully')
+
+        ref = db.reference(f'users/{tsk["user_id"]}/tasks/{tsk["task_id"]}')
+        ref.delete()
     except discord.HTTPException:
         print('Failed to send the message. The user may have DMs disabled.')
     except discord.NotFound:
