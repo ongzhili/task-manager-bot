@@ -208,13 +208,9 @@ async def view(ctx):
     ref = db.reference(f'users/{ctx.author.id}/tasks')                 
     tasks = ref.get()
     if tasks:
-        # embed.title = "Reminders"
-        # desc = ""
-        # for task in tasks:
-        #     desc += task.task
         body = ""
-        for task_id, task in tasks.items():
-            body += f"'{task['task']}' by <t:{int(datetime.datetime.strptime(task['time'], '%Y-%m-%d %I:%M %p').timestamp())}>\n"
+        for idx, (task_id, task) in enumerate(tasks.items()):
+            body += f"{idx + 1}: '{task['task']}' by <t:{int(datetime.datetime.strptime(task['time'], '%Y-%m-%d %I:%M %p').timestamp())}>\n"
         embed = discord.Embed(title="Reminders:",
                             description=body,
                             color=discord.Color.green())
@@ -225,9 +221,7 @@ async def view(ctx):
                             color=discord.Color.red())
         
     await ctx.send(embed=embed)
-                       
-
-
+                    
 
 @bot.command(name='roll', help='Rolls specified Y dice X times. !roll XdY')
 async def roll(ctx, args):
