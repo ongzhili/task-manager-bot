@@ -42,7 +42,7 @@ async def checkForDueTasks():
     def build_sched(matching_entries, scr):
         for entry in matching_entries:
             print(entry)
-            scr.enterabs(entry['time'].timestamp(), 1, asyncio.create_task, argument=(send_dm(entry),))
+            scr.enterabs(entry['time'], 1, asyncio.create_task, argument=(send_dm(entry),))
     if matching_entries:
         print("Matching entries found:")
         build_sched(matching_entries, scr)
@@ -52,9 +52,11 @@ async def checkForDueTasks():
 
 def checker():
    # Get the current time
+    WINDOW = 10
     now = datetime.datetime.now()
     now = now.replace(second=0, microsecond=0)
-    time_window = datetime.timedelta(minutes=10)
+    now = now.timestamp()
+    time_window = WINDOW * 60 
 
     # Get a reference to the 'users' node
     users_ref = db.reference('users')
@@ -68,7 +70,7 @@ def checker():
         for user_id, user_data in all_users.items():
             if 'tasks' in user_data:
                 for task_id, task_info in user_data['tasks'].items():
-                    task_time = datetime.datetime.strptime(task_info['time'], "%Y-%m-%d %I:%M %p")
+                    task_time = int(task_info['time'])
                     # Check if the task time is within the next 10 minutes
                     if now <= task_time <= now + time_window:
                         matching_tasks.append({
@@ -125,9 +127,6 @@ async def addtask(ctx, *, args):
             time_delta = parse_time_delta(time)
             due_time = datetime.datetime.now() + time_delta
             unix_timestamp = int(due_time.timestamp())
-
-            # Format the due time
-            formatted_due_time = due_time.strftime("%Y-%m-%d %I:%M %p")
             
             # Convert ctx.author.id to a string and remove any invalid characters
             author_id = str(ctx.author.id).replace('.', '_').replace('$', '_').replace('#', '_').replace('[', '_').replace(']', '_')
@@ -139,7 +138,7 @@ async def addtask(ctx, *, args):
 
             entry = ref.push({
                 'task': task,
-                'time': formatted_due_time
+                'time': unix_timestamp
             })
             if time_delta < datetime.timedelta(minutes=10):
                 scr.enterabs(due_time.timestamp(), 1, asyncio.create_task, argument=(send_dm(
@@ -210,7 +209,7 @@ async def view(ctx):
     if tasks:
         body = ""
         for idx, (task_id, task) in enumerate(tasks.items()):
-            body += f"{idx + 1}: '{task['task']}' by <t:{int(datetime.datetime.strptime(task['time'], '%Y-%m-%d %I:%M %p').timestamp())}>\n"
+            body += f"{idx + 1}: '{task['task']}' by <t:{int(task['time'])}>\n"
         embed = discord.Embed(title="Reminders:",
                             description=body,
                             color=discord.Color.green())
@@ -221,6 +220,10 @@ async def view(ctx):
                             color=discord.Color.red())
         
     await ctx.send(embed=embed)
+
+@bot.command(name='delete', help='Deletes a reminder from the list.')
+async def delete(ctx, args):
+    print("Delete placeholder.")
                     
 
 @bot.command(name='roll', help='Rolls specified Y dice X times. !roll XdY')
