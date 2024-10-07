@@ -223,10 +223,39 @@ async def view(ctx):
         
     await ctx.send(embed=embed)
 
-@bot.command(name='delete', help='Deletes a reminder from the list.')
+@bot.command(name='delete', help='Deletes a reminder from the list. !delete <task_number> deletes the <task_number>th upcoming due date.')
 async def delete(ctx, args):
-    print("Delete placeholder.")
-                    
+    # Parse args, get int to delete
+    index = int(args)
+    if index <= 0:
+        embed = discord.Embed(title="Error!",
+                            description=f"Can't delete negative index tasks!",
+                            color=discord.Color.red())
+    else:
+        ref = db.reference(f'users/{ctx.author.id}/tasks')                 
+        tasks = ref.get()
+        if tasks:
+            # task[0] = id, task[1] = the items -- in tasks.items()
+            tasks = sorted(tasks.items(), key=lambda x: x[1]['time'])
+            if index > len(tasks):
+                embed = discord.Embed(title="Error!",
+                                    description=f"Can't delete {index}th task if you only have {len(tasks)} tasks!",
+                                    color=discord.Color.red())
+            else:
+                # -1 because it is 1-indexed
+                task = tasks[index - 1]
+                ref.child(task[0]).delete()
+                embed = discord.Embed(title="Success!",
+                                    description = f"Deleted **{task[1]['task']}** that was due in **<t:{int(task[1]['time'])}>**!",
+                                    color=discord.Color.red())
+                
+        else:
+            embed = discord.Embed(title="Error!",
+                                description="Can't delete reminders if you don't have any!",
+                                color=discord.Color.red())
+        
+    await ctx.send(embed=embed)
+
 
 @bot.command(name='roll', help='Rolls specified Y dice X times. !roll XdY')
 async def roll(ctx, args):
