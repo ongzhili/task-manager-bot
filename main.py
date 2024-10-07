@@ -207,6 +207,8 @@ async def view(ctx):
     ref = db.reference(f'users/{ctx.author.id}/tasks')                 
     tasks = ref.get()
     if tasks:
+        # task[0] = id, task[1] = the items -- in tasks.items()
+        tasks = dict(sorted(tasks.items(), key=lambda x: x[1]['time']))
         body = ""
         for idx, (task_id, task) in enumerate(tasks.items()):
             body += f"{idx + 1}: '{task['task']}' by <t:{int(task['time'])}>\n"
