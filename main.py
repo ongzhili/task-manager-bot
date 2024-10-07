@@ -34,9 +34,9 @@ scr = sched.scheduler(time.time, time.sleep)
 # Token
 token = ''
 
-@tasks.loop(minutes = 10) # repeat after every 30 minutes
+@tasks.loop(minutes = 1) # repeat after every 30 minutes
 async def checkForDueTasks():
-    print("Checking for Tasks that are due in the next 10 minutes:")
+    print("Checking for Tasks that are due in the next 1 minutes:")
     matching_entries = checker()
 
     def build_sched(matching_entries, scr):
@@ -52,7 +52,7 @@ async def checkForDueTasks():
 
 def checker():
    # Get the current time
-    WINDOW = 10
+    WINDOW = 1
     now = datetime.datetime.now()
     now = now.replace(second=0, microsecond=0)
     now = now.timestamp()
@@ -72,7 +72,7 @@ def checker():
                 for task_id, task_info in user_data['tasks'].items():
                     task_time = int(task_info['time'])
                     # Check if the task time is within the next 10 minutes
-                    if now <= task_time <= now + time_window:
+                    if now <= task_time < now + time_window:
                         matching_tasks.append({
                             'user_id': user_id,
                             'task_id': task_id,
@@ -125,7 +125,7 @@ async def addtask(ctx, *, args):
 
         try:
             time_delta = parse_time_delta(time)
-            due_time = datetime.datetime.now() + time_delta
+            due_time = datetime.datetime.now().replace(second=0, microsecond=0) + time_delta
             unix_timestamp = int(due_time.timestamp())
             
             # Convert ctx.author.id to a string and remove any invalid characters
@@ -140,7 +140,7 @@ async def addtask(ctx, *, args):
                 'task': task,
                 'time': unix_timestamp
             })
-            if time_delta < datetime.timedelta(minutes=10):
+            if time_delta < datetime.timedelta(minutes=1):
                 scr.enterabs(due_time.timestamp(), 1, asyncio.create_task, argument=(send_dm(
                         {
                             'user_id': ctx.author.id,
@@ -223,7 +223,7 @@ async def view(ctx):
         
     await ctx.send(embed=embed)
 
-@bot.command(name='delete', help='Deletes a reminder from the list. !delete <task_number> deletes the <task_number>th upcoming due date.')
+@bot.command(name='delete', help='Deletes a reminder from the list. !delete <task_number> deletes the <task_number>th upcoming due date. Will not work for tasks due soon')
 async def delete(ctx, args):
     # Parse args, get int to delete
     index = int(args)
@@ -255,6 +255,47 @@ async def delete(ctx, args):
                                 color=discord.Color.red())
         
     await ctx.send(embed=embed)
+
+
+@bot.command(name='extend', help='Extends a reminder\'s due date. !Extend `<task_number>` in `<new_time_delta>` extends the `<task_number>`th upcoming task\'s due date by `<new_time_delta>`. Will not work for tasks due soon')
+async def changedate(ctx, *, args):
+    index, time_delta = args.rsplit(" by ", 1)
+    index = int(index)
+    time_delta = parse_time_delta(time_delta).total_seconds()
+    if index <= 0:
+        embed = discord.Embed(title="Error!",
+                            description=f"Can't delete negative index tasks!",
+                            color=discord.Color.red())
+    else:
+        ref = db.reference(f'users/{ctx.author.id}/tasks')                 
+        tasks = ref.get()
+        if tasks:
+            # task[0] = id, task[1] = the items -- in tasks.items()
+            tasks = sorted(tasks.items(), key=lambda x: x[1]['time'])
+            if index > len(tasks):
+                embed = discord.Embed(title="Error!",
+                                    description=f"Can't delete {index}th task if you only have {len(tasks)} tasks!",
+                                    color=discord.Color.red())
+            else:
+                # -1 because it is 1-indexed
+                task = tasks[index - 1]
+                ref.child(task[0]).delete()
+                new_time = int(int(task[1]['time']) + time_delta)
+                entry = ref.push({
+                    'task': task[1]['task'],
+                    'time': new_time
+                })
+                embed = discord.Embed(title="Success!",
+                                    description = f"Extended **{task[1]['task']}** to be due in **<t:{new_time}>**!",
+                                    color=discord.Color.red())
+                
+        else:
+            embed = discord.Embed(title="Error!",
+                                description="Can't delete reminders if you don't have any!",
+                                color=discord.Color.red())
+        
+    await ctx.send(embed=embed)
+
 
 
 @bot.command(name='roll', help='Rolls specified Y dice X times. !roll XdY')
