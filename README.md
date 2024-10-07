@@ -2,6 +2,8 @@
 
 ## About
 
+Just a simple discord bot project to replicate functions that we want (from other bots), as well as some new ideas, and compiling it into a single bot.
+
 ## Installation
 
 This bot uses the discord.py library, and ossapi (wrapper for osu!API)
