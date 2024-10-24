@@ -34,6 +34,11 @@ scr = sched.scheduler(time.time, time.sleep)
 # Token
 token = ''
 
+'''
+## Task that checks for due tasks every minute
+
+Polls db for tasks due in the next minute, then builds a schedule to send a DM to those that have a due task.
+'''
 @tasks.loop(minutes = 1) # repeat after every 30 minutes
 async def checkForDueTasks():
     print("Checking for Tasks that are due in the next 1 minutes:")
@@ -49,7 +54,9 @@ async def checkForDueTasks():
     else:
         print("No matching entries found.")
 
-
+'''
+Helper function to check for all tasks due in the next minute.
+'''
 def checker():
    # Get the current time
     WINDOW = 1
@@ -116,7 +123,7 @@ async def addtask(ctx, *, args):
     parts = args.rsplit(" in ", 1)
     
     if len(parts) != 2:
-        await ctx.send("Invalid format. Please use: !addtask <TASK> in <TIME>")
+        raise commands.BadArgument("Invalid format! Please use the format: <TASK> in <TIME>.")
         
     else:
         task, time = parts
@@ -154,27 +161,50 @@ async def addtask(ctx, *, args):
             await ctx.send(f"Task added: '{task}' to be completed by <t:{unix_timestamp}> (This should be in your local timezone)")
 
         except ValueError as e:
-            
-            await ctx.send(f"Error parsing time: {e}")
+            raise commands.BadArgument("Error parsing time: {}".format(e))
+
+@addtask.error
+async def addtask_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        embed = discord.Embed(title=":warning: Invalid input for !addtask",
+                            description="You did not assign anything!",
+                            color=discord.Color.red())
+        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
+    if isinstance(error, commands.BadArgument):
+        embed = discord.Embed(title=":warning: Invalid input for !addtask",
+                            description=str(error),
+                            color=discord.Color.red())
+        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
 
 def parse_time_delta(time_string):
-    # Parse time delta from strings like "2 days", "1 week", "3 hours", etc.
-    match = re.match(r'(\d+)\s*(day|days|week|weeks|hour|hours|minute|minutes)', time_string, re.IGNORECASE)
-    if match:
-        amount, unit = match.groups()
+    # Initialize a total timedelta
+    total_delta = datetime.timedelta()
+    
+    # Regular expression to match time components
+    pattern = r'(\d+)\s*(day|days|week|weeks|h|hour|hours|minute|minutes|min)'
+    
+    # Find all matches in the input string
+    matches = re.findall(pattern, time_string, re.IGNORECASE)
+
+    if not matches:
+        raise commands.BadArgument("Invalid time format. Please use formats like '2 days', '1 hour and 3 minutes', etc.")
+    
+    for amount, unit in matches:
         amount = int(amount)
         unit = unit.lower()
         
         if unit in ['day', 'days']:
-            return datetime.timedelta(days=amount)
+            total_delta += datetime.timedelta(days=amount)
         elif unit in ['week', 'weeks']:
-            return datetime.timedelta(weeks=amount)
-        elif unit in ['hour', 'hours']:
-            return datetime.timedelta(hours=amount)
-        elif unit in ['minute', 'minutes']:
-            return datetime.timedelta(minutes=amount)
-    
-    raise ValueError(f"Unable to parse time string: {time_string}")
+            total_delta += datetime.timedelta(weeks=amount)
+        elif unit in ['hour', 'hours', 'h']:
+            total_delta += datetime.timedelta(hours=amount)
+        elif unit in ['minute', 'minutes', 'min']:
+            total_delta += datetime.timedelta(minutes=amount)
+
+    return total_delta
 
 @bot.command(name='8ball', help='Consults the magic 8-ball :8_ball: !8ball <Question>')
 async def eball(ctx, args):
@@ -197,7 +227,7 @@ async def eball(ctx, args):
 @eball.error
 async def eball_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
-        embed = discord.Embed(title="Invalid input for !8ball",
+        embed = discord.Embed(title=":warning: Invalid input for !8ball",
                             description="You did not ask 8ball anything!",
                             color=discord.Color.red())
         embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
@@ -226,8 +256,11 @@ async def view(ctx):
 
 @bot.command(name='delete', help='Deletes a reminder from the list. !delete <task_number> deletes the <task_number>th upcoming due date. Will not work for tasks due soon')
 async def delete(ctx, args):
-    # Parse args, get int to delete
-    index = int(args)
+    try:
+        index = int(args)
+    except ValueError as e:
+        raise commands.BadArgument("{} is not a valid index!".format(args))
+
     if index <= 0:
         embed = discord.Embed(title="Error!",
                             description=f"Can't delete negative index tasks!",
@@ -256,6 +289,20 @@ async def delete(ctx, args):
                                 color=discord.Color.red())
         
     await ctx.send(embed=embed)
+@delete.error
+async def delete_error(ctx, error):
+    if isinstance(error, commands.BadArgument):
+        embed = discord.Embed(title=":warning: Invalid input for !delete",
+                            description=str(error),
+                            color=discord.Color.red())
+        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
+    if isinstance(error, commands.MissingRequiredArgument):
+        embed = discord.Embed(title=":warning: Invalid input for !delete",
+                            description="You did not specify any arguments!",
+                            color=discord.Color.red())
+        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
 
 
 @bot.command(name='extend', help='Extends a reminder\'s due date. !Extend `<task_number>` in `<new_time_delta>` extends the `<task_number>`th upcoming task\'s due date by `<new_time_delta>`. Will not work for tasks due soon')
