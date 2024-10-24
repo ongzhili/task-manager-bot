@@ -157,8 +157,10 @@ async def addtask(ctx, *, args):
                             'time': due_time
                         }
                 ),))
-            
-            await ctx.send(f"Task added: '{task}' to be completed by <t:{unix_timestamp}> (This should be in your local timezone)")
+            embd=discord.Embed(title="Task Added!",
+                description="'{}' to be completed by <t:{}> (This should be in your local timezone)".format(task, unix_timestamp),
+                color=discord.Color.green())
+            await ctx.send(embed=embd)
 
         except ValueError as e:
             raise commands.BadArgument("Error parsing time: {}".format(e))
@@ -250,7 +252,7 @@ async def view(ctx):
     else:
         embed = discord.Embed(title="No Reminders!",
                             description="Looks clear!",
-                            color=discord.Color.red())
+                            color=discord.Color.green())
         
     await ctx.send(embed=embed)
 
@@ -281,7 +283,7 @@ async def delete(ctx, args):
                 ref.child(task[0]).delete()
                 embed = discord.Embed(title="Success!",
                                     description = f"Deleted **{task[1]['task']}** that was due in **<t:{int(task[1]['time'])}>**!",
-                                    color=discord.Color.red())
+                                    color=discord.Color.green())
                 
         else:
             embed = discord.Embed(title="Error!",
@@ -335,7 +337,7 @@ async def changedate(ctx, *, args):
                 })
                 embed = discord.Embed(title="Success!",
                                     description = f"Extended **{task[1]['task']}** to be due in **<t:{new_time}>**!",
-                                    color=discord.Color.red())
+                                    color=discord.Color.green())
                 
         else:
             embed = discord.Embed(title="Error!",
