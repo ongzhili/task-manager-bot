@@ -256,8 +256,11 @@ async def view(ctx):
 
 @bot.command(name='delete', help='Deletes a reminder from the list. !delete <task_number> deletes the <task_number>th upcoming due date. Will not work for tasks due soon')
 async def delete(ctx, args):
-    # Parse args, get int to delete
-    index = int(args)
+    try:
+        index = int(args)
+    except ValueError as e:
+        raise commands.BadArgument("{} is not a valid index!".format(args))
+
     if index <= 0:
         embed = discord.Embed(title="Error!",
                             description=f"Can't delete negative index tasks!",
@@ -286,6 +289,20 @@ async def delete(ctx, args):
                                 color=discord.Color.red())
         
     await ctx.send(embed=embed)
+@delete.error
+async def delete_error(ctx, error):
+    if isinstance(error, commands.BadArgument):
+        embed = discord.Embed(title=":warning: Invalid input for !delete",
+                            description=str(error),
+                            color=discord.Color.red())
+        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
+    if isinstance(error, commands.MissingRequiredArgument):
+        embed = discord.Embed(title=":warning: Invalid input for !delete",
+                            description="You did not specify any arguments!",
+                            color=discord.Color.red())
+        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
+        await ctx.send(embed=embed)
 
 
 @bot.command(name='extend', help='Extends a reminder\'s due date. !Extend `<task_number>` in `<new_time_delta>` extends the `<task_number>`th upcoming task\'s due date by `<new_time_delta>`. Will not work for tasks due soon')
