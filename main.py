@@ -141,6 +141,7 @@ async def addtask(ctx, *, args):
                 'time': unix_timestamp
             })
             if time_delta < datetime.timedelta(minutes=1):
+                # Will not happen as polling is in 1 minute intervals
                 scr.enterabs(due_time.timestamp(), 1, asyncio.create_task, argument=(send_dm(
                         {
                             'user_id': ctx.author.id,
