@@ -22,6 +22,7 @@ pip install firebase_admin
 - [x] Send a reminder during set time
 - [x] Tools - coinflip, roll dice (XdY, X<=10, Y=4,6,8,10,12,20)
 - [ ] Backend db
+- [ ] Splitwise-like functionality
 
 ### Far goals
 - [ ] play with osu api (i need to check this apparently there is a rate limit)
