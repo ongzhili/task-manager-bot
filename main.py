@@ -4,8 +4,6 @@ import discord
 from discord.ext import commands, tasks
 import discord.ext.commands
 from bot.tools import *
-from bot.timetools import *
-from bot.discordtools import *
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import db
@@ -116,6 +114,7 @@ async def send_dm(tsk):
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
+    await bot.load_extension('bot.fun.fun-master')
     start_task_loop.start()
     checkForDueTasks.start()
 
@@ -134,10 +133,11 @@ async def addtask(ctx, *, args):
 
         try:
             time_delta = parse_time_delta(time)
-            unix_timestamp = duedate_in_unix_timestamp(time_delta)
+            due_time = datetime.datetime.now().replace(second=0, microsecond=0) + time_delta
+            unix_timestamp = int(due_time.timestamp())
             
             # Convert ctx.author.id to a string and remove any invalid characters
-            author_id = discord_id_to_firebase_entry(ctx.author.id)
+            author_id = str(ctx.author.id).replace('.', '_').replace('$', '_').replace('#', '_').replace('[', '_').replace(']', '_')
 
             ref = db.reference(f'users/{author_id}/tasks')
             if not ref.get():
@@ -181,33 +181,33 @@ async def addtask_error(ctx, error):
         embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
         await ctx.send(embed=embed)
 
+def parse_time_delta(time_string):
+    # Initialize a total timedelta
+    total_delta = datetime.timedelta()
+    
+    # Regular expression to match time components
+    pattern = r'(\d+)\s*(day|days|week|weeks|h|hour|hours|minute|minutes|min)'
+    
+    # Find all matches in the input string
+    matches = re.findall(pattern, time_string, re.IGNORECASE)
 
-@bot.command(name='8ball', help='Consults the magic 8-ball :8_ball: !8ball <Question>')
-async def eball(ctx, args):
-    # Gets 8ball response
-        result = eightball(args)
+    if not matches:
+        raise commands.BadArgument("Invalid time format. Please use formats like '2 days', '1 hour and 3 minutes', etc.")
+    
+    for amount, unit in matches:
+        amount = int(amount)
+        unit = unit.lower()
+        
+        if unit in ['day', 'days']:
+            total_delta += datetime.timedelta(days=amount)
+        elif unit in ['week', 'weeks']:
+            total_delta += datetime.timedelta(weeks=amount)
+        elif unit in ['hour', 'hours', 'h']:
+            total_delta += datetime.timedelta(hours=amount)
+        elif unit in ['minute', 'minutes', 'min']:
+            total_delta += datetime.timedelta(minutes=amount)
 
-        # Send result as embed
-        if not result[0]:
-            embed = discord.Embed(title="Invalid input for !8ball",
-                                description=f"{result[1]}",
-                                color=discord.Color.red())
-            embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
-            await ctx.send(embed=embed)
-        else:
-            embed = discord.Embed(title=f"8Ball",
-                                description=f"The 8ball has spoken:\n{result[1]}",
-                                color=discord.Color.green())
-            embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
-            await ctx.send(embed=embed)
-@eball.error
-async def eball_error(ctx, error):
-    if isinstance(error, commands.MissingRequiredArgument):
-        embed = discord.Embed(title=":warning: Invalid input for !8ball",
-                            description="You did not ask 8ball anything!",
-                            color=discord.Color.red())
-        embed.set_footer(text=ctx.author.display_name, icon_url=ctx.author.avatar)
-        await ctx.send(embed=embed)
+    return total_delta
 
 @bot.command(name='view', help='Shows current reminders. !view')
 async def view(ctx):
@@ -215,7 +215,10 @@ async def view(ctx):
     tasks = ref.get()
     if tasks:
         # task[0] = id, task[1] = the items -- in tasks.items()
-        body = stringify_tasks(tasks)
+        tasks = dict(sorted(tasks.items(), key=lambda x: x[1]['time']))
+        body = ""
+        for idx, (task_id, task) in enumerate(tasks.items()):
+            body += f"{idx + 1}: '{task['task']}' by <t:{int(task['time'])}>\n"
         embed = discord.Embed(title="Reminders:",
                             description=body,
                             color=discord.Color.green())
@@ -243,7 +246,7 @@ async def delete(ctx, args):
         tasks = ref.get()
         if tasks:
             # task[0] = id, task[1] = the items -- in tasks.items()
-            tasks = tasks_sorted_by_time(tasks)
+            tasks = sorted(tasks.items(), key=lambda x: x[1]['time'])
             if index > len(tasks):
                 embed = discord.Embed(title="Error!",
                                     description=f"Can't delete {index}th task if you only have {len(tasks)} tasks!",
@@ -292,7 +295,7 @@ async def changedate(ctx, *, args):
         tasks = ref.get()
         if tasks:
             # task[0] = id, task[1] = the items -- in tasks.items()
-            tasks = tasks_sorted_by_time(tasks)
+            tasks = sorted(tasks.items(), key=lambda x: x[1]['time'])
             if index > len(tasks):
                 embed = discord.Embed(title="Error!",
                                     description=f"Can't delete {index}th task if you only have {len(tasks)} tasks!",
