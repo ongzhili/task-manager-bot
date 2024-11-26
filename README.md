@@ -18,7 +18,7 @@ pip install firebase_admin
 ## PLANNED FEATURES (Feel free to add)
 
 ### Main functions
-- [ ] CRUD for tasks
+- [x] CRUD for tasks
 - [x] Send a reminder during set time
 - [x] Tools - coinflip, roll dice (XdY, X<=10, Y=4,6,8,10,12,20)
 - [ ] Backend db
