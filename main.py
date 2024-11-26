@@ -11,6 +11,7 @@ import sched
 import time
 import asyncio
 from ossapi import Ossapi
+from bot.task_manager.task_master import TaskChecker
 
 import re
 
@@ -34,89 +35,12 @@ scr = sched.scheduler(time.time, time.sleep)
 # Token
 token = ''
 
-'''
-## Task that checks for due tasks every minute
-
-Polls db for tasks due in the next minute, then builds a schedule to send a DM to those that have a due task.
-'''
-@tasks.loop(minutes = 1) # repeat after every 30 minutes
-async def checkForDueTasks():
-    print("Checking for Tasks that are due in the next 1 minutes:")
-    matching_entries = checker()
-
-    def build_sched(matching_entries, scr):
-        for entry in matching_entries:
-            print(entry)
-            scr.enterabs(entry['time'], 1, asyncio.create_task, argument=(send_dm(entry),))
-    if matching_entries:
-        print("Matching entries found:")
-        build_sched(matching_entries, scr)
-    else:
-        print("No matching entries found.")
-
-'''
-Helper function to check for all tasks due in the next minute.
-'''
-def checker():
-   # Get the current time
-    WINDOW = 1
-    now = datetime.datetime.now()
-    now = now.replace(second=0, microsecond=0)
-    now = now.timestamp()
-    time_window = WINDOW * 60 
-
-    # Get a reference to the 'users' node
-    users_ref = db.reference('users')
-
-    # Dictionary to store matching tasks
-    matching_tasks = []
-
-    # Iterate through all users
-    all_users = users_ref.get()
-    if all_users:
-        for user_id, user_data in all_users.items():
-            if 'tasks' in user_data:
-                for task_id, task_info in user_data['tasks'].items():
-                    task_time = int(task_info['time'])
-                    # Check if the task time is within the next 10 minutes
-                    if now <= task_time < now + time_window:
-                        matching_tasks.append({
-                            'user_id': user_id,
-                            'task_id': task_id,
-                            'task': task_info['task'],
-                            'time': task_time
-                        })
-
-    return matching_tasks
-
-@tasks.loop(seconds=1)
-async def start_task_loop():
-    await run_scheduler()
-
-async def run_scheduler():
-    while True:
-        scr.run(blocking=False)  # Run the scheduler without blocking
-        await asyncio.sleep(1)  # Sleep to prevent busy waiting
-
-async def send_dm(tsk):
-    try:
-        user = await bot.fetch_user(tsk['user_id'])
-        await user.send(f'Reminder: {tsk["task"]}')
-        print('Message sent to {user.name} successfully')
-        ref = db.reference(f'users/{tsk["user_id"]}/tasks/{tsk["task_id"]}')
-        ref.delete()
-    except discord.HTTPException:
-        print('Failed to send the message. The user may have DMs disabled.')
-    except discord.NotFound:
-        print('User not found. Please check the user ID.')
-
 # Event handler for when the bot is ready
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord!')
     await bot.load_extension('bot.fun.fun-master')
-    start_task_loop.start()
-    checkForDueTasks.start()
+    await bot.add_cog(TaskChecker(bot, db))
 
 @bot.command(name='addtask', help = 'Adds a task to the task manager list. :calendar: Usage: !addtask <TASK> in <TIME>')
 async def addtask(ctx, *, args):
@@ -148,16 +72,16 @@ async def addtask(ctx, *, args):
                 'task': task,
                 'time': unix_timestamp
             })
-            if time_delta < datetime.timedelta(minutes=1):
-                # Will not happen as polling is in 1 minute intervals
-                scr.enterabs(due_time.timestamp(), 1, asyncio.create_task, argument=(send_dm(
-                        {
-                            'user_id': ctx.author.id,
-                            'task_id': entry.key,
-                            'task': task,
-                            'time': due_time
-                        }
-                ),))
+            # if time_delta < datetime.timedelta(minutes=1):
+            #     # Will not happen as polling is in 1 minute intervals
+            #     scr.enterabs(due_time.timestamp(), 1, asyncio.create_task, argument=(send_dm(
+            #             {
+            #                 'user_id': ctx.author.id,
+            #                 'task_id': entry.key,
+            #                 'task': task,
+            #                 'time': due_time
+            #             }
+            #     ),))
             embd=discord.Embed(title="Task Added!",
                 description="'{}' to be completed by <t:{}> (This should be in your local timezone)".format(task, unix_timestamp),
                 color=discord.Color.green())
