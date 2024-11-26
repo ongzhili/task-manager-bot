@@ -320,18 +320,6 @@ async def changedate(ctx, *, args):
         
     await ctx.send(embed=embed)
 
-# Command to assign a task
-@bot.command(name='assign', help='Assigns a task to a user.')
-async def assign_task(ctx, task_id: int, user: discord.Member):
-    # Here you would assign the task to the user in your database or in-memory data structure
-    await ctx.send(f'Task {task_id} assigned to {user.name}')
-
-# Command to mark a task as completed
-@bot.command(name='complete', help='Marks a task as completed.')
-async def complete_task(ctx, task_id: int):
-    # Here you would mark the task as completed in your database or in-memory data structure
-    await ctx.send(f'Task {task_id} marked as completed')
-
 '''
 Init: open token file and set token
 '''
