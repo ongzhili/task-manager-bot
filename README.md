@@ -13,6 +13,12 @@ pip install discord
 
 ## PLANNED FEATURES (Feel free to add)
 
+### TODO feat/split-money
+- [ ] Implement input system for money to local vars
+- [ ] Implement max-flow algorithm
+- [ ] Functioning money-transfer logic
+- [ ] Migrate local vars to database
+
 ### Main functions
 - [ ] CRUD for tasks
 - [ ] Send a reminder during set time?
